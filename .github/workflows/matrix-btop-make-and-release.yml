@@ -22,7 +22,7 @@ jobs:
             aarch64-linux-musl,
           ]
 
-    name: ${{ matrix.name }} ${{ matrix.arch_type }}
+    name: ${{ matrix.name }} ${{ matrix.CHOST }}
 
     env:
       prerelease: false
@@ -62,22 +62,22 @@ jobs:
           docker exec --env-file env.custom multiarch tar xf "${{ matrix.CHOST }}.tar.gz" --strip-components=1 -C /usr/local
 
       - name: Docker - Git clone btop
-        run: docker exec --env-file env.custom -w /root multiarch git clone --single-branch --branch "master" --shallow-submodules --recurse-submodules --depth 1 https://github.com/aristocratos/btop.git btop
+        run: docker exec --env-file env.custom -w /root multiarch git clone --single-branch --branch "main" --shallow-submodules --recurse-submodules --depth 1 https://github.com/aristocratos/btop.git btop
 
-      - name: Docker - build ${{ matrix.arch_type}} toolchain
+      - name: Docker - build ${{ matrix.CHOST}} toolchain
         run: docker exec --env-file env.custom -w /root/btop multiarch make STATIC=true STRIP=true ARCH=${{ matrix.CHOST }} -j"$(nproc)"
 
-      - name: Docker - install ${{ matrix.arch_type}} toolchain
+      - name: Docker - install ${{ matrix.CHOST}} toolchain
         run: docker exec --env-file env.custom -w  /root/btop multiarch make install PREFIX=/root/btop-completed
 
-      - name: Docker - archive ${{ matrix.arch_type}} toolchain
-        run: docker exec --env-file env.custom -w /root multiarch tar -czvf ${{ matrix.arch_type}}.tar.gz /root/btop-completed
+      - name: Docker - archive ${{ matrix.CHOST}} toolchain
+        run: docker exec --env-file env.custom -w /root multiarch tar -czvf ${{ matrix.CHOST}}.tar.gz /root/btop-completed
 
       - name: Create release - tag - assets
         uses: ncipollo/release-action@v1.8.10
         with:
           prerelease: false
-          artifacts: "btop/${{ matrix.arch_type}}.tar.gz"
+          artifacts: "btop/${{ matrix.CHOST}}.tar.gz"
           replacesArtifacts: true
           tag: "11-2021"
           name: "btop toolchains"
