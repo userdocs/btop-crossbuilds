@@ -74,9 +74,9 @@ jobs:
         uses: ncipollo/release-action@v1.8.10
         with:
           prerelease: false
-          artifacts: "btop/${{ matrix.CHOST }}.tar.gz"
+          artifacts: "${{ matrix.CHOST }}.tar.gz"
           replacesArtifacts: true
-          tag: "11-2021"
+          tag: "2021"
           name: "btop toolchains"
           bodyFile: "realease_body.md"
           allowUpdates: true
