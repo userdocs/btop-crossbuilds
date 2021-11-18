@@ -81,6 +81,6 @@ jobs:
           replacesArtifacts: true
           tag: "v${{ env.btop_version }}"
           name: "btop ${{ env.btop_version }} "
-          bodyFile: "btop ${{ env.btop_version }} built using https://github.com/userdocs/musl-cross-make"
+          body: "btop ${{ env.btop_version }} built using https://github.com/userdocs/musl-cross-make"
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
