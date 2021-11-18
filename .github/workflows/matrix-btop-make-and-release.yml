@@ -1,0 +1,81 @@
+name: matrix btop and release
+
+on:
+  - workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [btop]
+        os_id: [alpine]
+        os_version_id: [edge]
+        CHOST:
+          [
+            x86_64-linux-musl,
+            arm-linux-musleabihf,
+            armv5l-linux-musleabihf,
+            armv6-linux-musleabihf,
+            armv7r-linux-musleabihf,
+            aarch64-linux-musl,
+          ]
+
+    name: ${{ matrix.name }} ${{ matrix.arch_type }}
+
+    env:
+      prerelease: false
+
+    steps:
+      - uses: actions/checkout@v2.4.0
+
+      - name: Host - update
+        run: sudo apt-get update
+
+      - name: Host - upgrade
+        run: sudo apt-get -y upgrade
+
+      - name: Host - Install host qemu-static
+        run: sudo apt-get install -y qemu binfmt-support qemu-user-static
+
+      - name: Host - Docker multiarch bootstrap
+        run: sudo docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+      - name: Host - Create Docker template env file
+        run: |
+          echo "PATH=/root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" >> env.custom
+          echo "CHOST=${{ matrix.CHOST }}" >> env.custom
+          echo "CC=${{ matrix.CHOST }}-gcc" >> env.custom
+          echo "AR=${{ matrix.CHOST }}-ar" >> env.custom
+          echo "CXX=${{ matrix.CHOST }}-g++" >> env.custom
+
+      - name: Host - Create docker multiarch ${{ matrix.arch }} container
+        run: docker run --name multiarch -it -d --env-file env.custom -w /root -v ${{ github.workspace }}:/root ${{ matrix.os_id }}:${{ matrix.os_version_id }}
+
+      - name: Docker - apk install build deps
+        run: docker exec --env-file env.custom -w /root multiarch apk add autoconf automake bash bash-completion bison build-base coreutils cmake ccache curl findutils flex git graphviz libarchive-tools libtool linux-headers ncurses-dev patch perl pkgconf python3 python3-dev re2c rsync rsync texinfo ttf-freefont xz zip
+
+      - name: Docker - Git clone btop
+        run: docker exec --env-file env.custom -w /root multiarch git clone --single-branch --branch "master" --shallow-submodules --recurse-submodules --depth 1 https://github.com/aristocratos/btop.git btop
+
+      - name: Docker - build ${{ matrix.arch_type}} toolchain
+        run: docker exec --env-file env.custom -w /root/btop multiarch make STATIC=true STRIP=true ARCH=${{ matrix.CHOST }} -j"$(nproc)"
+
+      - name: Docker - install ${{ matrix.arch_type}} toolchain
+        run: docker exec --env-file env.custom -w  /root/btop multiarch make install PREFIX=/root/btop-completed
+
+      - name: Docker - archive ${{ matrix.arch_type}} toolchain
+        run: docker exec --env-file env.custom -w /root multiarch tar -czvf ${{ matrix.arch_type}}.tar.gz /root/btop-completed
+
+      - name: Create release - tag - assets
+        uses: ncipollo/release-action@v1.8.10
+        with:
+          prerelease: false
+          artifacts: "btop/${{ matrix.arch_type}}.tar.gz"
+          replacesArtifacts: true
+          tag: "11-2021"
+          name: "btop toolchains"
+          bodyFile: "realease_body.md"
+          allowUpdates: true
+          token: ${{ secrets.TEST }}
