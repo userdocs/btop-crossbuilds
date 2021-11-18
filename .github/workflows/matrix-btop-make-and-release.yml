@@ -44,11 +44,8 @@ jobs:
 
       - name: Host - Create Docker template env file
         run: |
-          echo "PATH=/root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" >> env.custom
-          echo "CHOST=${{ matrix.CHOST }}" >> env.custom
-          echo "CC=${{ matrix.CHOST }}-gcc" >> env.custom
-          echo "AR=${{ matrix.CHOST }}-ar" >> env.custom
-          echo "CXX=${{ matrix.CHOST }}-g++" >> env.custom
+          echo "PATH=/root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" > env.custom
+          echo "LD_LIBRARY_PATH=/root/lib:/root/${{ matrix.CHOST }}/lib" >> env.custom
 
       - name: Host - Create docker multiarch ${{ matrix.arch }} container
         run: docker run --name multiarch -it -d --env-file env.custom -w /root -v ${{ github.workspace }}:/root ${{ matrix.os_id }}:${{ matrix.os_version_id }}
@@ -65,13 +62,13 @@ jobs:
         run: docker exec --env-file env.custom -w /root multiarch git clone --single-branch --branch "main" --shallow-submodules --recurse-submodules --depth 1 https://github.com/aristocratos/btop.git btop
 
       - name: Docker - build ${{ matrix.CHOST }} toolchain
-        run: docker exec --env-file env.custom -w /root/btop multiarch make STATIC=true STRIP=true ARCH=${{ matrix.CHOST }} -j"$(nproc)"
+        run: docker exec --env-file env.custom -w /root/btop multiarch make STATIC=true STRIP=true ARCH=${{ matrix.CHOST }} -j"$(nproc)" make STATIC=true STRIP=true ARCH=CHOST=${{ matrix.CHOST }} CC=${{ matrix.CHOST }}-gcc AR=${{ matrix.CHOST }}-ar CXX=${{ matrix.CHOST }}-g++ -j"$(nproc)" CHOST=${{ matrix.CHOST }} CC=${{ matrix.CHOST }}-gcc AR=${{ matrix.CHOST }}-ar CXX=${{ matrix.CHOST }}-g++
 
       - name: Docker - install ${{ matrix.CHOST }} toolchain
         run: docker exec --env-file env.custom -w  /root/btop multiarch make install PREFIX=/root/btop-completed
 
       - name: Docker - archive ${{ matrix.CHOST }} toolchain
-        run: docker exec --env-file env.custom -w /root multiarch tar -czvf ${{ matrix.CHOST }}.tar.gz /root/btop-completed
+        run: docker exec --env-file env.custom -w /root multiarch tar -czvf ${{ matrix.CHOST }}.tar.gz btop-completed
 
       - name: Create release - tag - assets
         uses: ncipollo/release-action@v1.8.10
