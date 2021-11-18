@@ -62,7 +62,7 @@ jobs:
         run: docker exec --env-file env.custom -w /root multiarch git clone --single-branch --branch "main" --shallow-submodules --recurse-submodules --depth 1 https://github.com/aristocratos/btop.git btop
 
       - name: Docker - build ${{ matrix.CHOST }} toolchain
-        run: docker exec --env-file env.custom -w /root/btop multiarch make STATIC=true STRIP=true ARCH=${{ matrix.CHOST }} -j"$(nproc)" make STATIC=true STRIP=true ARCH=CHOST=${{ matrix.CHOST }} CC=${{ matrix.CHOST }}-gcc AR=${{ matrix.CHOST }}-ar CXX=${{ matrix.CHOST }}-g++ -j"$(nproc)" CHOST=${{ matrix.CHOST }} CC=${{ matrix.CHOST }}-gcc AR=${{ matrix.CHOST }}-ar CXX=${{ matrix.CHOST }}-g++
+        run: docker exec --env-file env.custom -w /root/btop multiarch make STATIC=true STRIP=true ARCH=${{ matrix.CHOST }} -j"$(nproc)" CHOST=${{ matrix.CHOST }} CC=${{ matrix.CHOST }}-gcc AR=${{ matrix.CHOST }}-ar CXX=${{ matrix.CHOST }}-g++
 
       - name: Docker - install ${{ matrix.CHOST }} toolchain
         run: docker exec --env-file env.custom -w  /root/btop multiarch make install PREFIX=/root/btop-completed
