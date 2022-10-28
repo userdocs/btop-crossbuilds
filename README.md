@@ -4,7 +4,7 @@ Static crossbuilds to use with Linux based platforms
 
 Built on Alpine using https://github.com/userdocs/musl-cross-make
 
-Exampled download using `x86_64`:
+Example download using `x86_64`:
 
 ```bash
 wget -q "https://github.com/userdocs/btop-crossbuilds/releases/latest/download/x86_64-linux-musl.tar.gz" -O ~/btop.tar.gz
