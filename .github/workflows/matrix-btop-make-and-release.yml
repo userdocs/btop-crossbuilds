@@ -119,7 +119,7 @@ jobs:
         run: echo "btop_version=$(curl -sL https://raw.githubusercontent.com/aristocratos/btop/main/src/btop.cpp | sed -rn 's|(.*)const string Version = "(.*)";|\2|p')" >> $GITHUB_ENV
 
       - name: Create release - tag - assets
-        uses: ncipollo/release-action@v1.8.10
+        uses: ncipollo/release-action@v1.11.1
         with:
           prerelease: false
           artifacts: "${{ matrix.arch_type }}.tar.gz"
