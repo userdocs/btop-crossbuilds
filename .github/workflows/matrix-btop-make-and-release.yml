@@ -15,77 +15,48 @@ jobs:
         arch_type:
           [
             aarch64-linux-musl,
-            aarch64_be-linux-musl,
             arm-linux-musleabi,
             arm-linux-musleabihf,
-            armeb-linux-musleabi,
-            armeb-linux-musleabihf,
-            armel-linux-musleabi,
-            armel-linux-musleabihf,
-            armv5l-linux-musleabi,
-            armv5l-linux-musleabihf,
-            armv6-linux-musleabi,
             armv6-linux-musleabihf,
             armv7l-linux-musleabihf,
-            armv7m-linux-musleabi,
-            armv7r-linux-musleabihf,
-            i486-linux-musl,
             i686-linux-musl,
-            m68k-linux-musl,
-            microblaze-linux-musl,
-            microblazeel-linux-musl,
-            mips-linux-musl,
-            mips-linux-muslsf,
-            mips-linux-musln32sf,
-            mips64-linux-musl,
-            mips64-linux-musln32,
-            mips64-linux-musln32sf,
-            mips64el-linux-musl,
-            mips64el-linux-musln32,
-            mips64el-linux-musln32sf,
-            mipsel-linux-musl,
-            mipsel-linux-musln32,
-            mipsel-linux-musln32sf,
-            mipsel-linux-muslsf,
-            or1k-linux-musl,
-            powerpc-linux-musl,
-            powerpc-linux-muslsf,
-            powerpc64-linux-musl,
-            powerpc64le-linux-musl,
-            powerpcle-linux-musl,
-            powerpcle-linux-muslsf,
-            riscv32-linux-musl,
-            riscv64-linux-musl,
-            s390x-linux-musl,
-            sh2-linux-musl,
-            sh2-linux-muslfdpic,
-            sh2eb-linux-musl,
-            sh2eb-linux-muslfdpic,
-            sh4-linux-musl,
-            sh4eb-linux-musl,
             x86_64-linux-musl,
-            x86_64-linux-muslx32,
+            mips-linux-musl,
+            mipsel-linux-musl,
+            mips64-linux-musl,
+            mips64el-linux-musl,
+            powerpc-linux-musl,
+            powerpc64le-linux-musl,
+            s390x-linux-musl,
+            riscv64-linux-musl,
           ]
 
     name: ${{ matrix.name }} ${{ matrix.arch_type }}
 
     env:
       prerelease: false
+      XZ_OPT: "-9T0"
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Host - update
-        run: sudo apt-get update
+      # - name: Host - phased updates
+      #   run: printf '%s\n' 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
 
-      - name: Host - upgrade
-        run: sudo apt-get -y upgrade
+      # - name: Host - set up noble repo -t noble
+      #   run: |
+      #     printf '%b\n' 'Package: *\nPin: release n=noble\nPin-Priority: 50' | sudo tee /etc/apt/preferences
+      #     printf '%b\n' 'deb http://archive.ubuntu.com/ubuntu/ noble main universe restricted' | sudo tee /etc/apt/sources.list.d/noble.list
 
-      - name: Host - Install host qemu-static
-        run: sudo apt-get install -y qemu binfmt-support qemu-user-static curl
+      # - name: Host - update
+      #   run: sudo apt-get update
 
-      - name: Host - Docker multiarch bootstrap
-        run: sudo docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      # - name: Host - upgrade
+      #   run: sudo apt-get -y upgrade
+
+      # - name: Host - set up qemu-user-static binfmt-support from noble
+      #   run: sudo apt install -t noble libpipeline1 qemu-user-static binfmt-support
 
       - name: Host - Create Docker template env file
         run: |
@@ -96,12 +67,12 @@ jobs:
         run: docker run --name multiarch -it -d --env-file env.custom -w /root -v ${{ github.workspace }}:/root ${{ matrix.os_id }}:${{ matrix.os_version_id }}
 
       - name: Docker - apk install build deps
-        run: docker exec --env-file env.custom -w /root multiarch apk add autoconf automake bash bash-completion bison build-base coreutils cmake ccache curl findutils flex git graphviz libarchive-tools libtool linux-headers ncurses-dev patch perl pkgconf python3 python3-dev re2c rsync rsync texinfo ttf-freefont xz zip
+        run: docker exec --env-file env.custom -w /root multiarch apk add autoconf automake build-base coreutils curl findutils git libarchive-tools libtool linux-headers ncurses-dev patch pkgconf xz zip
 
-      - name: Docker target - install musl-cross-make ${{ matrix.arch_type }}
+      - name: Docker target - install qbt-musl-cross-make ${{ matrix.arch_type }}
         run: |
-          docker exec --env-file env.custom multiarch curl -sL "https://github.com/userdocs/musl-cross-make/releases/latest/download/${{ matrix.arch_type }}.tar.gz" > "${{ matrix.arch_type }}.tar.gz"
-          docker exec --env-file env.custom multiarch tar xf "${{ matrix.arch_type }}.tar.gz" --strip-components=1 -C /usr/local
+          docker exec --env-file env.custom multiarch curl -sL "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${{ matrix.arch_type }}.tar.xz" > "${{ matrix.arch_type }}.tar.xz"
+          docker exec --env-file env.custom multiarch tar xf "${{ matrix.arch_type }}.tar.xz" --strip-components=1 -C /usr/local
 
       - name: Docker - Git clone btop
         run: docker exec --env-file env.custom -w /root multiarch git clone --single-branch --branch "main" --shallow-submodules --recurse-submodules --depth 1 https://github.com/aristocratos/btop.git btop
@@ -113,7 +84,7 @@ jobs:
         run: docker exec --env-file env.custom -w  /root/btop multiarch make install PREFIX=/root/btop-completed
 
       - name: Docker - archive ${{ matrix.arch_type }} toolchain
-        run: docker exec --env-file env.custom -w /root multiarch tar -czvf ${{ matrix.arch_type }}.tar.gz btop-completed
+        run: docker exec --env-file env.custom -w /root multiarch tar -cJf ${{ matrix.arch_type }}.tar.xz btop-completed
 
       - name: Host - Set btop version
         run: echo "btop_version=$(curl -sL https://raw.githubusercontent.com/aristocratos/btop/main/src/btop.cpp | sed -rn 's|(.*)const string Version = "(.*)";|\2|p')" >> $GITHUB_ENV
@@ -122,10 +93,10 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           prerelease: false
-          artifacts: "${{ matrix.arch_type }}.tar.gz"
+          artifacts: "${{ matrix.arch_type }}.tar.xz"
           replacesArtifacts: true
           tag: "v${{ env.btop_version }}"
           name: "btop ${{ env.btop_version }} "
-          body: "btop ${{ env.btop_version }} built using https://github.com/userdocs/musl-cross-make"
+          body: "btop ${{ env.btop_version }} built using https://github.com/userdocs/qbt-musl-cross-make"
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
